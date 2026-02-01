@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoCo Admin - Image Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-100 min-h-screen p-6 flex flex-col items-center">
+    <div class="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 mt-10 border-t-8 border-slate-900">
+        <h2 class="text-3xl font-bold text-center mb-8 text-slate-800">IMAGE HUB</h2>
+        
+        <div class="flex gap-2 mb-8 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+            <button onclick="switchMode('new')" id="tabNew" class="flex-1 py-4 rounded-xl font-bold bg-white shadow-md text-slate-900 transition-all text-sm">🆕 ใหม่</button>
+            <button onclick="switchMode('edit')" id="tabEdit" class="flex-1 py-4 rounded-xl font-bold text-slate-400 transition-all text-sm">✏️ แก้ไข</button>
+        </div>
+
+        <div id="sectionNew" class="mb-6">
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase ml-2">Next Property ID</label>
+            <input type="text" id="hpIdNew" readonly class="w-full p-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-900 text-center outline-none">
+        </div>
+        <div id="sectionEdit" class="hidden mb-6">
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase ml-2">Select Property</label>
+            <select id="hpIdEdit" class="w-full p-4 bg-white border-2 border-slate-900 rounded-2xl outline-none focus:ring-2 ring-slate-100 appearance-none font-bold text-slate-700"></select>
+        </div>
+
+        <div class="space-y-5 my-8">
+            <label class="block group">
+                <div class="p-6 bg-slate-50 border-2 border-slate-200 border-dashed rounded-3xl cursor-pointer group-hover:border-slate-900 transition-colors text-center">
+                    <span id="labelThumb" class="text-slate-500 font-bold text-sm block">📸 อัปโหลดรูปหน้าปก (1 รูป)</span>
+                    <input type="file" id="inputThumb" accept="image/*" class="hidden" onchange="updateLabel('thumb')">
+                </div>
+            </label>
+            <label class="block group">
+                <div class="p-6 bg-slate-50 border-2 border-slate-200 border-dashed rounded-3xl cursor-pointer group-hover:border-slate-900 transition-colors text-center">
+                    <span id="labelGallery" class="text-slate-500 font-bold text-sm block">🎞️ อัปโหลดอัลบั้ม (หลายรูป)</span>
+                    <input type="file" id="inputGallery" multiple accept="image/*" class="hidden" onchange="updateLabel('gallery')">
+                </div>
+            </label>
+        </div>
+
+        <div id="statusBox" class="hidden mb-8 p-5 rounded-3xl text-center text-[10px] font-bold uppercase tracking-widest shadow-inner"></div>
+
+        <button onclick="handleUpload()" id="uploadBtn" class="w-full bg-slate-900 text-white py-6 rounded-3xl font-bold text-lg hover:shadow-2xl active:scale-95 transition-all uppercase tracking-[0.2em]">บันทึกและส่งข้อมูล</button>
+    </div>
+
+    <script>
+        // 🛑 สำคัญ: วาง Web App URL ตัวเดียวกับใน index.html
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwutOHNmsj_T4O_2N_VWsxnJm_FB8kGZZTBDwGrcpmXcbyYnHVAe62y-2uWMUzeKYmT/exec"; 
+        let currentMode = 'new';
+        window.onload = loadData;
+
+        async function loadData() {
+            try {
+                const resNext = await fetch(WEB_APP_URL);
+                document.getElementById('hpIdNew').value = await resNext.text();
+                const resList = await fetch(WEB_APP_URL + "?mode=list");
+                const ids = await resList.json();
+                document.getElementById('hpIdEdit').innerHTML = ids.map(id => `<option value="${id}">${id}</option>`).join('');
+            } catch (e) { alert("Error connecting to database"); }
+        }
+
+        function updateLabel(type) {
+            const files = document.getElementById(type === 'thumb' ? 'inputThumb' : 'inputGallery').files;
+            document.getElementById(type === 'thumb' ? 'labelThumb' : 'labelGallery').innerText = files.length > 0 ? `✅ เลือก ${files.length} รูปแล้ว` : 'เลือกรูปภาพใหม่';
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('sectionNew').classList.toggle('hidden', mode === 'edit');
+            document.getElementById('sectionEdit').classList.toggle('hidden', mode === 'new');
+            document.getElementById('tabNew').className = mode === 'new' ? "flex-1 py-4 rounded-xl font-bold bg-white shadow-md text-slate-900" : "flex-1 py-4 rounded-xl font-bold text-slate-400";
+            document.getElementById('tabEdit').className = mode === 'edit' ? "flex-1 py-4 rounded-xl font-bold bg-white shadow-sm text-slate-900" : "flex-1 py-4 rounded-xl font-bold text-slate-400";
+        }
+
+        async function handleUpload() {
+            const hpId = currentMode === 'new' ? document.getElementById('hpIdNew').value : document.getElementById('hpIdEdit').value;
+            const thumb = document.getElementById('inputThumb').files;
+            const gall = document.getElementById('inputGallery').files;
+            const btn = document.getElementById('uploadBtn');
+            const status = document.getElementById('statusBox');
+
+            if (thumb.length === 0 && gall.length === 0) return alert("กรุณาเลือกรูปภาพอย่างน้อย 1 ใบ!");
+            btn.disabled = true;
+            status.classList.remove('hidden');
+            status.className = "mb-8 p-5 rounded-3xl text-center bg-slate-50 text-slate-500 animate-pulse";
+            status.innerText = "🚨 กำลังจัดส่งข้อมูลเข้า Cloud Drive...";
+
+            try {
+                const filesData = [];
+                if (thumb.length > 0) filesData.push({ name: "t_" + thumb[0].name, type: thumb[0].type, base64: (await toB64(thumb[0])).split(',')[1], isThumb: true });
+                for (let f of gall) filesData.push({ name: f.name, type: f.type, base64: (await toB64(f)).split(',')[1], isThumb: false });
+
+                await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ hpId: hpId, files: filesData }) });
+                status.className = "mb-8 p-5 rounded-3xl text-center bg-green-50 text-green-600";
+                status.innerText = "🎉 บันทึกข้อมูลและ SYNC เรียบร้อย!";
+                setTimeout(() => location.reload(), 2000);
+            } catch (e) {
+                status.className = "mb-8 p-5 rounded-3xl text-center bg-red-50 text-red-600";
+                status.innerText = "❌ เกิดข้อผิดพลาด: " + e.message;
+                btn.disabled = false;
+            }
+        }
+        function toB64(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); }); }
+    </script>
+</body>
+</html>
